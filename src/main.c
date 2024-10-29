@@ -26,16 +26,15 @@ typedef struct RankingEntry {
 typedef struct Obstacle {
   Vector2 position;
   Vector2 size;
-  bool isMoving;
-  Vector2 speed;
-  Vector2 direction;
   struct Obstacle *next;
 } Obstacle;
 
 typedef struct Enemy {
   Vector2 position;
+  Vector2 initialPosition;
   Vector2 speed;
   Vector2 direction;
+  float maxDistance;
   bool isAlive;
   struct Enemy *next;
 } Enemy;
@@ -47,10 +46,13 @@ typedef struct {
 } Settings;
 
 Player InitPlayer();
-Enemy CreateEnemy(Vector2 position, Enemy *next);
-Obstacle CreateObstacle(Vector2 position, Vector2 size, bool isMoving, Vector2 speed, Vector2 direction, Obstacle *next);
+Enemy CreateEnemy(Vector2 position,float maxDistance, Enemy *next);
+Obstacle CreateObstacle(Vector2 position, Vector2, Obstacle *next);
 void FreeEnemies(Enemy *head);
 void FreeObstacles(Obstacle *head);
+void UpdatePlayer(Player *player, float deltaTime);
+void UpdateEnemy(Enemy *enemy, float deltaTime);
+void UpdateObstacle(Obstacle *obstacle, float deltaTime);
 void AddToRanking(RankingEntry **head, const char *nome, int score);
 void SaveRanking(RankingEntry *head);
 RankingEntry *LoadRanking();
@@ -72,23 +74,22 @@ Player InitPlayer() {
   return player;
 }
 
-Enemy *CreateEnemy(Vector2 position, Enemy *next) {
+Enemy *CreateEnemy(Vector2 position, float maxDistance, Enemy *next) {
   Enemy *enemy = (Enemy *)malloc(sizeof(Enemy));
   enemy->position = position;
-  enemy->speed = (Vector2){ 0, 0 };
+  enemy->initialPosition = position;
+  enemy->speed = (Vector2){ 100, 0 };
   enemy->direction = (Vector2){ -1, 0 };
+  enemy->maxDistance = maxDistance;
   enemy->isAlive = true;
   enemy->next = next;
   return enemy;
 }
 
-Obstacle *CreateObstacle(Vector2 position, Vector2 size, bool isMoving, Vector2 speed, Vector2 direction, Obstacle *next) {
+Obstacle *CreateObstacle(Vector2 position, Vector2 size, Obstacle *next) {
   Obstacle *obstacle = (Obstacle *)malloc(sizeof(Obstacle));
   obstacle->position = position;
   obstacle->size = size;
-  obstacle->speed = speed;
-  obstacle->direction = direction;
-  obstacle->isMoving = isMoving;
   obstacle->next = next;
   return obstacle;
 }
@@ -108,6 +109,47 @@ void FreeEnemies(Enemy *head) {
     Enemy *next = current->next;
     free(current);
     current = next;
+  }
+}
+
+void UpdatePlayer(Player *player, float deltaTime){
+  if (IsKeyDown(KEY_RIGHT)){
+    player->position.x += PLAYER_SPEED * deltaTime;
+    player->direction = (Vector2){1, 0};
+  }
+  if (IsKeyDown(KEY_LEFT)){
+    player->position.x -= PLAYER_SPEED * deltaTime;
+    player->direction = (Vector2){-1, 0};
+  }
+  
+  if (IsKeyPressed(KEY_SPACE) && !player->isJumping){
+    player->speed.y = -JUMP_FORCE;
+    player->isJumping = true;
+  }
+
+  player->speed += GRAVITY * deltaTime;
+  player->position.y += player->speed.y * deltaTime;
+
+  if (palyer->position.y >= SCREEN_HEIGHT - 50){
+    player->position.y = SCREEN_HEIGHT - 50;
+    player->isJumping = 0;
+  }
+}
+
+void UpdateEnemy(Enemy *enemy, float deltaTime) {
+  enemy->position.x += enemy->speed.x * enemy->direction.x * deltaTime;
+
+  if (enemy->position.x < enemy->initialPosition.x - enemy->maxDistance || 
+    enemy->position.x > enemy->initialPosition.x + enemy->maxDistance) {
+    enemy->direction.x *= -1;
+  }
+}
+
+void UpdateObstacle(Obstacle *obstacle, float deltaTime) {
+  obstacle->position.x += obstacle->size.x * deltaTime;
+
+  if (obstacle->position.x > 500 || obstacle->position.x < 100) {
+    obstacle->size.x *= -1;
   }
 }
 
