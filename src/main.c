@@ -9,7 +9,7 @@
 #define JUMP_FORCE 10.0f
 #define PLAYER_SPEED 5.0f
 
-typedef struct {
+typedef struct{
   Vector2 position;
   Vector2 speed;
   Vector2 direction;
@@ -17,19 +17,19 @@ typedef struct {
   int score;
 } Player;
 
-typedef struct RankingEntry {
+typedef struct{
   char nome[51];
   int score;
   struct RankingEntry *next;
 } RankingEntry;
 
-typedef struct Obstacle {
+typedef struct{
   Vector2 position;
   Vector2 size;
   struct Obstacle *next;
 } Obstacle;
 
-typedef struct Enemy {
+typedef struct{
   Vector2 position;
   Vector2 initialPosition;
   Vector2 speed;
@@ -39,32 +39,43 @@ typedef struct Enemy {
   struct Enemy *next;
 } Enemy;
 
-typedef struct {
-    int volume;
-    int difficulty;
-    bool fullscreen;
+typedef struct{
+  int volume;
+  int difficulty;
+  bool fullscreen;
 } Settings;
 
 Player InitPlayer();
-Enemy CreateEnemy(Vector2 position,float maxDistance, Enemy *next);
-Obstacle CreateObstacle(Vector2 position, Vector2, Obstacle *next);
+Enemy *CreateEnemy(Vector2 position, float maxDistance, Enemy *next);
+Obstacle *CreateObstacle(Vector2 position, Vector2 size, Obstacle *next);
 void FreeEnemies(Enemy *head);
 void FreeObstacles(Obstacle *head);
 void UpdatePlayer(Player *player, float deltaTime);
 void UpdateEnemy(Enemy *enemy, float deltaTime);
 void UpdateObstacle(Obstacle *obstacle, float deltaTime);
+bool CheckCollisionEnemy(Player *player, Enemy *enemy);
+bool CheckCollisionObstacle(Player *player, Obstacle *Obstacle);
 void AddToRanking(RankingEntry **head, const char *nome, int score);
 void SaveRanking(RankingEntry *head);
 RankingEntry *LoadRanking();
 void FreeRanking(RankingEntry *head);
 Settings *LoadSettings();
 void SaveSettings(Settings *settings);
+void UpdateCameraPlayerBounds(Camera2D *camera, Player *player);
 
-int main() {
+int main(){
+  Player player = InitPlayer();
+  
+  Camera2D camera;
+  camera.target = (Vector2){ player.position.x + 25, player.position.y + 25 };
+  camera.offset = (Vector2){ SCREEN_WIDTH/2.0f, SCREEN_HEIGHT/2.0f };
+  camera.rotation = 0.0f;
+  camera.zoom = 1.0f;
+
   return 0;
 }
 
-Player InitPlayer() {
+Player InitPlayer(){
   Player player;
   player.position = (Vector2){ 100, SCREEN_HEIGHT - 50 };
   player.speed = (Vector2){ 0, 0 };
@@ -74,7 +85,7 @@ Player InitPlayer() {
   return player;
 }
 
-Enemy *CreateEnemy(Vector2 position, float maxDistance, Enemy *next) {
+Enemy *CreateEnemy(Vector2 position, float maxDistance, Enemy *next){
   Enemy *enemy = (Enemy *)malloc(sizeof(Enemy));
   enemy->position = position;
   enemy->initialPosition = position;
@@ -86,7 +97,7 @@ Enemy *CreateEnemy(Vector2 position, float maxDistance, Enemy *next) {
   return enemy;
 }
 
-Obstacle *CreateObstacle(Vector2 position, Vector2 size, Obstacle *next) {
+Obstacle *CreateObstacle(Vector2 position, Vector2 size, Obstacle *next){
   Obstacle *obstacle = (Obstacle *)malloc(sizeof(Obstacle));
   obstacle->position = position;
   obstacle->size = size;
@@ -94,7 +105,7 @@ Obstacle *CreateObstacle(Vector2 position, Vector2 size, Obstacle *next) {
   return obstacle;
 }
 
-void FreeObstacles(Obstacle *head) {
+void FreeObstacles(Obstacle *head){
   Obstacle *current = head;
   while (current != NULL) {
     Obstacle *next = current->next;
@@ -103,7 +114,7 @@ void FreeObstacles(Obstacle *head) {
   }
 }
 
-void FreeEnemies(Enemy *head) {
+void FreeEnemies(Enemy *head){
   Enemy *current = head;
   while (current != NULL) {
     Enemy *next = current->next;
@@ -113,30 +124,30 @@ void FreeEnemies(Enemy *head) {
 }
 
 void UpdatePlayer(Player *player, float deltaTime){
-  if (IsKeyDown(KEY_RIGHT)){
+  if (IsKeyDown(KEY_D)){
     player->position.x += PLAYER_SPEED * deltaTime;
     player->direction = (Vector2){1, 0};
   }
-  if (IsKeyDown(KEY_LEFT)){
+  if (IsKeyDown(KEY_A)){
     player->position.x -= PLAYER_SPEED * deltaTime;
     player->direction = (Vector2){-1, 0};
   }
   
-  if (IsKeyPressed(KEY_SPACE) && !player->isJumping){
+  if ((IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W)) && !player->isJumping){
     player->speed.y = -JUMP_FORCE;
     player->isJumping = true;
   }
 
-  player->speed += GRAVITY * deltaTime;
+  player->speed.y += GRAVITY * deltaTime;
   player->position.y += player->speed.y * deltaTime;
 
-  if (palyer->position.y >= SCREEN_HEIGHT - 50){
+  if (player->position.y >= SCREEN_HEIGHT - 50){
     player->position.y = SCREEN_HEIGHT - 50;
-    player->isJumping = 0;
+    player->isJumping = false;
   }
 }
 
-void UpdateEnemy(Enemy *enemy, float deltaTime) {
+void UpdateEnemy(Enemy *enemy, float deltaTime){
   enemy->position.x += enemy->speed.x * enemy->direction.x * deltaTime;
 
   if (enemy->position.x < enemy->initialPosition.x - enemy->maxDistance || 
@@ -145,7 +156,7 @@ void UpdateEnemy(Enemy *enemy, float deltaTime) {
   }
 }
 
-void UpdateObstacle(Obstacle *obstacle, float deltaTime) {
+void UpdateObstacle(Obstacle *obstacle, float deltaTime){
   obstacle->position.x += obstacle->size.x * deltaTime;
 
   if (obstacle->position.x > 500 || obstacle->position.x < 100) {
@@ -153,7 +164,21 @@ void UpdateObstacle(Obstacle *obstacle, float deltaTime) {
   }
 }
 
-void AddToRanking(RankingEntry **head, const char *nome, int score) {
+bool CheckCollisionEnemy(Player *player, Enemy *enemy){
+  Rectangle playerRec = { player->position.x, player->position.y, 50, 50 };
+  Rectangle enemyRec = { enemy->position.x, enemy->position.y, 50, 50 };
+
+  return CheckCollisionRecs(playerRec, enemyRec);
+}
+
+bool CheckCollisionObstacle(Player *player, Obstacle *obstacle){
+  Rectangle playerRec = { player->position.x, player->position.y, 50, 50 };
+  Rectangle obstacleRec = { obstacle->position.x, obstacle->position.y, 50, 50 };
+
+  return CheckCollisionRecs(playerRec, obstacleRec);
+}
+
+void AddToRanking(RankingEntry **head, const char *nome, int score){
   RankingEntry *newEntry = (RankingEntry *)malloc(sizeof(RankingEntry));
   strcpy(newEntry->nome, nome);
   newEntry->score = score;
@@ -161,7 +186,7 @@ void AddToRanking(RankingEntry **head, const char *nome, int score) {
   *head = newEntry;
 }
 
-void SaveRanking(RankingEntry *head) {
+void SaveRanking(RankingEntry *head){
   FILE *file = fopen("ranking.txt", "w");
   if (file == NULL) {
     printf("Erro ao abrir o arquivo de ranking!\n");
@@ -177,7 +202,7 @@ void SaveRanking(RankingEntry *head) {
   fclose(file);
 }
 
-RankingEntry *LoadRanking() {
+RankingEntry *LoadRanking(){
   FILE *file = fopen("ranking.txt", "r");
   if (file == NULL) {
     printf("Erro ao abrir o arquivo de ranking! O ranking será inicializado vazio.\n");
@@ -196,7 +221,7 @@ RankingEntry *LoadRanking() {
   return head;
 }
 
-void FreeRanking(RankingEntry *head) {
+void FreeRanking(RankingEntry *head){
   RankingEntry *current = head;
   while (current != NULL) {
     RankingEntry *next = current->next;
@@ -205,7 +230,7 @@ void FreeRanking(RankingEntry *head) {
   }
 }
 
-Settings *LoadSettings() {
+Settings *LoadSettings(){
   FILE *file = fopen("settings.txt", "r");
   if (file == NULL) {
     printf("Erro ao abrir o arquivo de configurações! Usando configurações padrão.\n");
@@ -222,7 +247,7 @@ Settings *LoadSettings() {
   return settings;
 }
 
-void SaveSettings(Settings *settings) {
+void SaveSettings(Settings *settings){
   FILE *file = fopen("settings.txt", "w");
   if (file == NULL) {
     printf("Erro ao abrir o arquivo de configurações!\n");
@@ -231,4 +256,14 @@ void SaveSettings(Settings *settings) {
 
   fprintf(file, "%d %d %d\n", settings->volume, settings->difficulty, settings->fullscreen);
   fclose(file);
+}
+
+void UpdateCameraPlayerBounds(Camera2D *camera, Player *player){
+  if (player->position.x > SCREEN_WIDTH/2.0f) {
+    camera->target.x = player->position.x;
+  }
+  
+  if (player->position.x < SCREEN_WIDTH/2.0f) {
+    camera->target.x = player->position.x;
+  }
 }
