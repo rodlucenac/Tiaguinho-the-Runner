@@ -76,18 +76,12 @@ int main(){
   //Enemy *enemies = CreateEnemy((Vector2){500, SCREEN_HEIGHT - 70}, 100, NULL);
   RankingEntry *ranking = LoadRanking();
 
-  //Camera2D camera ={0};
-  //camera.target = player.position;
-  //camera.offset = (Vector2){SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f};
-  //camera.zoom = 1.0f;
-
   while (!WindowShouldClose() && state != EXIT){
     BeginDrawing();
     ClearBackground(RAYWHITE);
 
-    switch  (state){
-      case MENU: {
-        // Desenhar o fundo e o chão
+    switch (state){
+      case MENU:{
         DrawTexture(background, 0, 0, WHITE);
         DrawTexturePro(
           ground,
@@ -98,43 +92,48 @@ int main(){
           WHITE
         );
 
-        // Nome do jogo (título principal)
         const char *gameName = "TIAGUINHO THE RUNNER";
         DrawText(
           gameName,
-          SCREEN_WIDTH / 2 - MeasureText(gameName, 40) / 2, // Centraliza o texto horizontalmente
-          50, // Posição Y
-          40, // Tamanho da fonte
-          DARKBLUE // Cor do texto
+          SCREEN_WIDTH / 2 - MeasureText(gameName, 40) / 2,
+          50,
+          40,
+          DARKBLUE
         );
 
-        // Opções do menu
-        const char *options[] = {"Start Game", "View Ranking", "Exit"};
-        for (int i = 0; i < 3; i++) {
+        const char *options[] ={"Start Game", "View Ranking", "Exit"};
+        for (int i = 0; i < 3; i++){
           Color color = (i == selectedOption) ? RED : DARKGRAY;
           DrawText(
             options[i],
-            SCREEN_WIDTH / 2 - MeasureText(options[i], 30) / 2, // Centraliza o texto
-            200 + i * 50, // Posição Y
-            30, // Tamanho da fonte
+            SCREEN_WIDTH / 2 - MeasureText(options[i], 30) / 2,
+            200 + i * 50,
+            30,
             color
           );
         }
 
-        // Navegação do menu com teclas
         if (IsKeyPressed(KEY_DOWN)) selectedOption = (selectedOption + 1) % 3;
         if (IsKeyPressed(KEY_UP)) selectedOption = (selectedOption + 2) % 3;
-        if (IsKeyPressed(KEY_ENTER)) {
+        if (IsKeyPressed(KEY_ENTER)){
           if (selectedOption == 0) state = GAME;
           else if (selectedOption == 1) state = RANKING;
           else if (selectedOption == 2) state = EXIT;
         }
       } break;
 
-      case GAME: {
-        DrawText("Game in progress...", SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2, 20, DARKGRAY);
+      case GAME:{
+        DrawTexture(background, 0, 0, WHITE);
+        DrawTexturePro(
+          ground,
+          (Rectangle){0, 0, ground.width, ground.height},
+          (Rectangle){0, SCREEN_HEIGHT - ground.height, SCREEN_WIDTH, ground.height},
+          (Vector2){0, 0},
+          0.0f,
+          WHITE
+        );
 
-        if (IsKeyPressed(KEY_BACKSPACE)) {
+        if (IsKeyPressed(KEY_BACKSPACE)){
           state = MENU;
         }
       } break;
@@ -166,6 +165,9 @@ int main(){
     EndDrawing();
   }
 
+  // Liberar recursos
+  UnloadTexture(background);
+  UnloadTexture(ground);
   //FreeObstacles(obstacles);
   //FreeEnemies(enemies);
   FreeRanking(ranking);
