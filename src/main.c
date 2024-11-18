@@ -7,7 +7,7 @@
 #define SCREEN_HEIGHT 720
 #define GRAVITY 9.8f
 #define JUMP_FORCE 10.0f
-#define PLAYER_SPEED 5.0f
+#define PLAYER_SPEED 20.0f
 
 typedef enum{
   MENU,
@@ -71,9 +71,11 @@ int main(){
 
   GameState state = MENU;
   int selectedOption = 0;
-  //Player player = InitPlayer();
-  //Obstacle *obstacles = CreateObstacle((Vector2){200, SCREEN_HEIGHT - 100}, (Vector2){100, 20}, NULL);
-  //Enemy *enemies = CreateEnemy((Vector2){500, SCREEN_HEIGHT - 70}, 100, NULL);
+  Player player = InitPlayer();
+  Obstacle *obstacles = CreateObstacle((Vector2){200, 200}, (Vector2){150, 30}, NULL);
+  obstacles = CreateObstacle((Vector2){400, 100}, (Vector2){150, 30}, obstacles);
+  obstacles = CreateObstacle((Vector2){700, 100}, (Vector2){150, 30}, obstacles);
+  Enemy *enemies = CreateEnemy((Vector2){500, SCREEN_HEIGHT - 70}, 100, NULL);
   RankingEntry *ranking = LoadRanking();
 
   while (!WindowShouldClose() && state != EXIT){
@@ -123,6 +125,44 @@ int main(){
       } break;
 
       case GAME:{
+        Camera2D camera = {0};
+        camera.offset = (Vector2){SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f};
+        camera.zoom = 1.0f;
+        camera.rotation = 0.0f;
+
+        float deltaTime = GetFrameTime();
+
+        if (IsKeyDown(KEY_D)){
+          if (player.position.x < SCREEN_WIDTH / 2){
+            player.position.x += PLAYER_SPEED * deltaTime;
+          } else{
+            camera.target.x = player.position.x + 25;
+          }
+        }
+
+        if (IsKeyDown(KEY_A)){
+          player.position.x -= PLAYER_SPEED * deltaTime;
+          if (player.position.x < 0){
+            player.position.x = 0;
+          }
+        }
+
+        UpdatePlayer(&player, deltaTime);
+
+        if (player.position.y >= SCREEN_HEIGHT - ground.height - 50){
+          player.position.y = SCREEN_HEIGHT - ground.height - 50;
+          player.isJumping = false;
+        }
+
+        if (player.position.x > SCREEN_WIDTH / 2){
+          camera.target.x = player.position.x + 25;
+        } else{
+          camera.target.x = SCREEN_WIDTH / 2;
+        }
+        camera.target.y = SCREEN_HEIGHT / 2;
+
+        BeginMode2D(camera);
+
         DrawTexture(background, 0, 0, WHITE);
         DrawTexturePro(
           ground,
@@ -133,8 +173,36 @@ int main(){
           WHITE
         );
 
+        static Texture2D platformTexture ={0};
+        if (!platformTexture.id) platformTexture = LoadTexture("resources/texture/platform.png");
+
+        Obstacle *currentObstacle = obstacles;
+        while (currentObstacle != NULL){
+          DrawTexturePro(
+            platformTexture,
+            (Rectangle){0, 0, platformTexture.width, platformTexture.height},
+            (Rectangle){
+              currentObstacle->position.x, 
+              currentObstacle->position.y, 
+              currentObstacle->size.x, 
+              currentObstacle->size.y
+            },
+            (Vector2){0, 0},
+            0.0f,
+            WHITE
+          );
+          currentObstacle = currentObstacle->next;
+        }
+
+        DrawRectangleV(player.position, (Vector2){50, 50}, RED);
+
+        EndMode2D();
+
+        CheckGroundCollision(&player, obstacles);
+
         if (IsKeyPressed(KEY_BACKSPACE)){
           state = MENU;
+          UnloadTexture(platformTexture);
         }
       } break;
 
@@ -165,11 +233,10 @@ int main(){
     EndDrawing();
   }
 
-  // Liberar recursos
   UnloadTexture(background);
   UnloadTexture(ground);
-  //FreeObstacles(obstacles);
-  //FreeEnemies(enemies);
+  FreeObstacles(obstacles);
+  FreeEnemies(enemies);
   FreeRanking(ranking);
   CloseWindow();
 
@@ -285,10 +352,10 @@ void UpdatePlayer(Player *player, float deltaTime){
 
 void CheckGroundCollision(Player *player, Obstacle *obstacles){
   while (obstacles != NULL){
-    Rectangle playerRec ={player->position.x, player->position.y, 50, 50};
-    Rectangle obstacleRec ={obstacles->position.x, obstacles->position.y, obstacles->size.x, obstacles->size.y};
+    Rectangle playerRect = {player->position.x, player->position.y, 50, 50};
+    Rectangle obstacleRect = {obstacles->position.x, obstacles->position.y, obstacles->size.x, obstacles->size.y};
 
-    if (CheckCollisionRecs(playerRec, obstacleRec)){
+    if (CheckCollisionRecs(playerRect, obstacleRect)){
       player->position.y = obstacles->position.y - 50;
       player->isJumping = false;
       player->speed.y = 0;
