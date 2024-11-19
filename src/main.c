@@ -362,29 +362,58 @@ int main(){
       } break;
 
 
-      case RANKING:{
+      case RANKING: {
         int yOffset = 100;
         RankingEntry *current = ranking;
-        DrawText("Ranking:", SCREEN_WIDTH / 2 - 100, 50, 30, DARKGRAY);
+
+        DrawTexture(background, 0, 0, WHITE);
+        DrawTexturePro(
+          ground,
+          (Rectangle){0, 0, ground.width, ground.height},
+          (Rectangle){0, SCREEN_HEIGHT - ground.height, SCREEN_WIDTH, ground.height},
+          (Vector2){0, 0},
+          0.0f,
+          WHITE
+        );
+
+        const char *gameName = "RANKING";
+        DrawText(
+          gameName,
+          SCREEN_WIDTH / 2 - MeasureText(gameName, 40) / 2,
+          50,
+          40,
+          DARKBLUE
+        );
 
         while (current != NULL){
+          char rankingText[100];
+          snprintf(rankingText, sizeof(rankingText), "%s - %d seconds", current->nome, current->score);
+
           DrawText(
-            TextFormat("%s - %d seconds", current->nome, current->score),
-            SCREEN_WIDTH / 2 - 150,
+            rankingText,
+            SCREEN_WIDTH / 2 - MeasureText(rankingText, 20) / 2,
             yOffset,
             20,
-            DARKGRAY
+            DARKBLUE
           );
           yOffset += 30;
           current = current->next;
         }
 
-        DrawText("Press BACKSPACE to return", SCREEN_WIDTH / 2 - 150, yOffset + 50, 20, GRAY);
+        const char *backText = "Press BACKSPACE to return";
+        DrawText(
+          backText,
+          SCREEN_WIDTH / 2 - MeasureText(backText, 20) / 2,
+          yOffset + 50,
+          20,
+          DARKGRAY
+        );
 
         if (IsKeyPressed(KEY_BACKSPACE)){
           state = MENU;
         }
       } break;
+
 
       case EXIT:
         break;
