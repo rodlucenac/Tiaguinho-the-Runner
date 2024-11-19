@@ -9,6 +9,6 @@
 
 ### Slide de apresentação:
 
-#### 
+#### https://www.canva.com/design/DAGW9PVu1fE/NX5JsESOhSJJM9hvN10DAA/edit?utm_content=DAGW9PVu1fE&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
 
 ## Colocar instrucao de baixar o raylib para linux e mac
