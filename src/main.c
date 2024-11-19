@@ -49,6 +49,8 @@ Player InitPlayer();
 Obstacle *CreateObstacle(Vector2 position, Vector2 size, Obstacle *next);
 Enemy *CreateEnemy(Vector2 position, float maxDistance, Enemy *next);
 RankingEntry *LoadRanking();
+void AddToRanking(RankingEntry **head, const char *nome, int score);
+void SaveRanking(RankingEntry *head);
 void FreeObstacles(Obstacle *head);
 void FreeEnemies(Enemy *head);
 void FreeRanking(RankingEntry *head);
@@ -76,9 +78,30 @@ int main(){
   Obstacle *obstacles = NULL;
   Enemy *enemies = NULL;
   RankingEntry *ranking = LoadRanking();
+  char playerName[51] = "";
+  bool nameEntered = false;
 
   static float lastGeneratedX = SCREEN_WIDTH;
   static float lastGeneratedBackgroundX = SCREEN_WIDTH;
+
+  while (!nameEntered){
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    DrawText("Enter your name: ", SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 - 20, 20, DARKGRAY);
+    DrawText(playerName, SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 + 20, 20, DARKBLUE);
+
+    int key = GetCharPressed();
+    if (key >= 32 && key <= 125 && strlen(playerName) < 50){
+      strncat(playerName, (char[]){(char)key, '\0'}, 1);
+    }
+    if (IsKeyPressed(KEY_BACKSPACE) && strlen(playerName) > 0){
+      playerName[strlen(playerName) - 1] = '\0';
+    }
+    if (IsKeyPressed(KEY_ENTER) && strlen(playerName) > 0){
+      nameEntered = true;
+    }
+    EndDrawing();
+  }
 
   while (!WindowShouldClose() && state != EXIT){
     BeginDrawing();
@@ -159,6 +182,13 @@ int main(){
         if (!playerLeftTexture.id) playerLeftTexture = LoadTexture("resources/texture/player_left.png");
 
         float deltaTime = GetFrameTime();
+        static float startTime = 0.0f;
+
+        if (startTime == 0.0f){
+          startTime = GetTime();
+        }
+
+        float elapsedTime = GetTime() - startTime;
 
         Texture2D currentPlayerTexture = playerStandingTexture;
         if (IsKeyDown(KEY_D)){
@@ -227,8 +257,10 @@ int main(){
           Rectangle enemyRec = {currentEnemy->position.x, currentEnemy->position.y, 50, 50};
 
           if (CheckCollisionRecs(playerRec, enemyRec) && currentEnemy->isAlive){
-            DrawText("Game Over!", SCREEN_WIDTH / 2 - MeasureText("Game Over!", 30) / 2, SCREEN_HEIGHT / 2, 30, RED);
+            AddToRanking(&ranking, playerName, (int)elapsedTime);
+            SaveRanking(ranking);
             state = MENU;
+            startTime = 0.0f;
             break;
           }
 
@@ -305,16 +337,20 @@ int main(){
 
         if (IsKeyPressed(KEY_BACKSPACE)){
           state = MENU;
+          SaveRanking(ranking);
+          startTime = 0.0f;
         }
       } break;
+
 
       case RANKING:{
         int yOffset = 100;
         RankingEntry *current = ranking;
         DrawText("Ranking:", SCREEN_WIDTH / 2 - 100, 50, 30, DARKGRAY);
-        while (current != NULL) {
+
+        while (current != NULL){
           DrawText(
-            TextFormat("%s - %d", current->nome, current->score),
+            TextFormat("%s - %d seconds", current->nome, current->score),
             SCREEN_WIDTH / 2 - 150,
             yOffset,
             20,
@@ -325,7 +361,10 @@ int main(){
         }
 
         DrawText("Press BACKSPACE to return", SCREEN_WIDTH / 2 - 150, yOffset + 50, 20, GRAY);
-        if (IsKeyPressed(KEY_BACKSPACE)) state = MENU;
+
+        if (IsKeyPressed(KEY_BACKSPACE)){
+          state = MENU;
+        }
       } break;
 
       case EXIT:
@@ -406,6 +445,39 @@ RankingEntry *LoadRanking(){
   return head;
 }
 
+void AddToRanking(RankingEntry **head, const char *nome, int score){
+  RankingEntry *newEntry = (RankingEntry *)malloc(sizeof(RankingEntry));
+  strcpy(newEntry->nome, nome);
+  newEntry->score = score;
+  newEntry->next = NULL;
+
+  if (*head == NULL || (*head)->score < score){
+    newEntry->next = *head;
+    *head = newEntry;
+  } else{
+    RankingEntry *current = *head;
+    while (current->next != NULL && current->next->score >= score){
+      current = current->next;
+    }
+    newEntry->next = current->next;
+    current->next = newEntry;
+  }
+}
+
+void SaveRanking(RankingEntry *head){
+  FILE *file = fopen("ranking.txt", "w");
+  if (file == NULL){
+    printf("Erro ao salvar o ranking!\n");
+    return;
+  }
+  RankingEntry *current = head;
+  while (current != NULL){
+    fprintf(file, "%s %d\n", current->nome, current->score);
+    current = current->next;
+  }
+  fclose(file);
+}
+
 void FreeObstacles(Obstacle *head){
   while (head != NULL){
     Obstacle *next = head->next;
@@ -476,26 +548,6 @@ void UpdateEnemy(Enemy *enemy, float deltaTime){
     }
     enemy = enemy->next;
   }
-}
-
-void DrawObstacles(Obstacle *head){
-  while (head != NULL){
-    DrawRectangleV(head->position, head->size, BROWN);
-    head = head->next;
-  }
-}
-
-void DrawEnemies(Enemy *head){
-  while (head != NULL){
-    if (head->isAlive){
-      DrawRectangleV(head->position, (Vector2){50, 50}, DARKPURPLE);
-    }
-    head = head->next;
-  }
-}
-
-void DrawHUD(Player *player){
-  DrawText(TextFormat("Score: %d", player->score), 10, 10, 20, BLACK);
 }
 
 void UpdateCameraPlayerBounds(Camera2D *camera, Player *player){
