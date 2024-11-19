@@ -12,3 +12,38 @@
 #### https://www.canva.com/design/DAGW9PVu1fE/NX5JsESOhSJJM9hvN10DAA/edit?utm_content=DAGW9PVu1fE&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
 
 ## Colocar instrucao de baixar o raylib para linux e mac
+
+Instale na sua maquina os pacotes Make e gcc com os seguintes comandos: 
+
+ sudo apt install make
+ sudo apt install gcc
+
+Use esses comandos para rodar o jogo:
+   make
+  ./tiaguinho
+
+!! Importante falar que você DEVE ter as seguintes bibliotecas !!
+
+  #include <stdlib.h>
+  #include <stdbool.h>
+  #include <stdio.h>
+  #include <unistd.h>
+  #include <time.h>
+
+Para instalar o Raylib no linux você deve usar os comandos:
+
+  git clone https://github.com/raysan5/raylib
+  cd raylib
+  mkdir build && cd build
+  cmake -DBUILD_SHARED_LIBS=ON ..
+  make
+  sudo make install
+  sudo cp /usr/local/lib/libraylib.so.420 /usr/lib/
+
+Para instalar o Raylib no Mac você deve usar os comandos:
+
+  brew install raylib
+  pkg-config --cflags --libs raylib
+
+
+  
