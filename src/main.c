@@ -189,9 +189,6 @@ int main(){
         static Texture2D playerRightTexture = {0};
         if (!playerRightTexture.id) playerRightTexture = LoadTexture("resources/texture/player_right.png");
 
-        static Texture2D playerLeftTexture = {0};
-        if (!playerLeftTexture.id) playerLeftTexture = LoadTexture("resources/texture/player_left.png");
-
         float deltaTime = GetFrameTime();
         static float startTime = 0.0f;
 
@@ -207,14 +204,11 @@ int main(){
         }
 
         Texture2D currentPlayerTexture = playerRightTexture;
-        if (IsKeyDown(KEY_A)){
-          currentPlayerTexture = playerLeftTexture;
-        }
 
         UpdatePlayer(&player, deltaTime, currentSpeed);
 
-        if (player.position.y >= SCREEN_HEIGHT - ground.height - 135){
-          player.position.y = SCREEN_HEIGHT - ground.height - 135;
+        if (player.position.y >= SCREEN_HEIGHT - ground.height - 50){
+          player.position.y = SCREEN_HEIGHT - ground.height - 50;
           player.isJumping = false;
         }
 
@@ -259,7 +253,7 @@ int main(){
             currentEnemy->direction.x *= -1;
           }
 
-          Rectangle playerRec = {player.position.x, player.position.y, 100, 150};
+          Rectangle playerRec = {player.position.x, player.position.y, 50, 50};
           Rectangle enemyRec = {currentEnemy->position.x, currentEnemy->position.y, 50, 50};
 
           if (CheckCollisionRecs(playerRec, enemyRec) && currentEnemy->isAlive){
@@ -332,7 +326,7 @@ int main(){
           (Rectangle){
             player.position.x,
             player.position.y,
-            100, 150
+            50, 50
           },
           (Vector2){0, 0},
           0.0f,
@@ -560,11 +554,11 @@ void UpdatePlayer(Player *player, float deltaTime,float currentSpeed){
 
 void CheckGroundCollision(Player *player, Obstacle *obstacles){
   while (obstacles != NULL){
-    Rectangle playerRect = {player->position.x, player->position.y, 100, 150};
+    Rectangle playerRect = {player->position.x, player->position.y, 50, 50};
     Rectangle obstacleRect = {obstacles->position.x, obstacles->position.y, obstacles->size.x, obstacles->size.y};
 
     if (CheckCollisionRecs(playerRect, obstacleRect)){
-      player->position.y = obstacles->position.y - 135;
+      player->position.y = obstacles->position.y - 50;
       player->isJumping = false;
       player->speed.y = 0;
     }
