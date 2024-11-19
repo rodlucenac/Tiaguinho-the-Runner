@@ -56,7 +56,7 @@ void SaveRanking(RankingEntry *head);
 void FreeObstacles(Obstacle *head);
 void FreeEnemies(Enemy *head);
 void FreeRanking(RankingEntry *head);
-void UpdatePlayer(Player *player, float deltaTime);
+void UpdatePlayer(Player *player, float deltaTime, float currentSpeed);
 void CheckGroundCollision(Player *player, Obstacle *obstacles);
 void ResetGame(Player *player, Obstacle **obstacles, Enemy **enemies, float *lastGeneratedX, float *lastGeneratedBackgroundX);
 
@@ -211,20 +211,13 @@ int main(){
 
         Texture2D currentPlayerTexture = playerStandingTexture;
         if (IsKeyDown(KEY_D)){
-          if (player.position.x < SCREEN_WIDTH / 2) {
-            player.position.x += currentSpeed * deltaTime;
-          } else {
-            camera.target.x = player.position.x + 25;
-          }
           currentPlayerTexture = playerRightTexture;
         }
         if (IsKeyDown(KEY_A)){
-          player.position.x -= currentSpeed * deltaTime;
-          if (player.position.x < 0) player.position.x = 0;
           currentPlayerTexture = playerLeftTexture;
         }
 
-        UpdatePlayer(&player, deltaTime);
+        UpdatePlayer(&player, deltaTime, currentSpeed);
 
         if (player.position.y >= SCREEN_HEIGHT - ground.height - 50){
           player.position.y = SCREEN_HEIGHT - ground.height - 50;
@@ -362,7 +355,7 @@ int main(){
       } break;
 
 
-      case RANKING: {
+      case RANKING:{
         int yOffset = 100;
         RankingEntry *current = ranking;
 
@@ -413,7 +406,6 @@ int main(){
           state = MENU;
         }
       } break;
-
 
       case EXIT:
         break;
@@ -550,12 +542,12 @@ void FreeRanking(RankingEntry *head){
   }
 }
 
-void UpdatePlayer(Player *player, float deltaTime){
+void UpdatePlayer(Player *player, float deltaTime,float currentSpeed){
   if (IsKeyDown(KEY_D)){
-    player->position.x += PLAYER_SPEED * deltaTime;
+    player->position.x += currentSpeed * deltaTime;
   }
   if (IsKeyDown(KEY_A)){
-    player->position.x -= PLAYER_SPEED * deltaTime;
+    player->position.x -= currentSpeed * deltaTime;
   }
 
   if ((IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W)) && !player->isJumping){
