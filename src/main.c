@@ -5,9 +5,9 @@
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-#define GRAVITY 9.8f
-#define JUMP_FORCE 10.0f
-#define PLAYER_SPEED 20.0f
+#define GRAVITY 15.0f
+#define JUMP_FORCE 50.0f
+#define PLAYER_SPEED 120.0f
 
 typedef enum{
   MENU,
@@ -60,6 +60,7 @@ void DrawEnemies(Enemy *head);
 void DrawHUD(Player *player);
 void UpdateCameraPlayerBounds(Camera2D *camera, Player *player);
 void ConstrainCameraToWorld(Camera2D *camera, float worldWidth, float worldHeight);
+void ResetGame(Player *player, Obstacle **obstacles, Enemy **enemies, float *lastGeneratedX, float *lastGeneratedBackgroundX);
 
 int main(){
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Tiaguinho the Runner");
@@ -71,12 +72,13 @@ int main(){
 
   GameState state = MENU;
   int selectedOption = 0;
-  Player player = InitPlayer();
-  Obstacle *obstacles = CreateObstacle((Vector2){200, 200}, (Vector2){150, 30}, NULL);
-  obstacles = CreateObstacle((Vector2){400, 100}, (Vector2){150, 30}, obstacles);
-  obstacles = CreateObstacle((Vector2){700, 100}, (Vector2){150, 30}, obstacles);
-  Enemy *enemies = CreateEnemy((Vector2){500, SCREEN_HEIGHT - 70}, 100, NULL);
+  Player player;
+  Obstacle *obstacles = NULL;
+  Enemy *enemies = NULL;
   RankingEntry *ranking = LoadRanking();
+
+  static float lastGeneratedX = SCREEN_WIDTH;
+  static float lastGeneratedBackgroundX = SCREEN_WIDTH;
 
   while (!WindowShouldClose() && state != EXIT){
     BeginDrawing();
@@ -84,6 +86,13 @@ int main(){
 
     switch (state){
       case MENU:{
+
+        bool resetGame = true;
+        if (resetGame){
+          ResetGame(&player, &obstacles, &enemies, &lastGeneratedX, &lastGeneratedBackgroundX);
+          resetGame = false;
+        }
+        
         DrawTexture(background, 0, 0, WHITE);
         DrawTexturePro(
           ground,
@@ -103,7 +112,7 @@ int main(){
           DARKBLUE
         );
 
-        const char *options[] ={"Start Game", "View Ranking", "Exit"};
+        const char *options[] = {"Start Game", "View Ranking", "Exit"};
         for (int i = 0; i < 3; i++){
           Color color = (i == selectedOption) ? RED : DARKGRAY;
           DrawText(
@@ -118,9 +127,13 @@ int main(){
         if (IsKeyPressed(KEY_DOWN)) selectedOption = (selectedOption + 1) % 3;
         if (IsKeyPressed(KEY_UP)) selectedOption = (selectedOption + 2) % 3;
         if (IsKeyPressed(KEY_ENTER)){
-          if (selectedOption == 0) state = GAME;
-          else if (selectedOption == 1) state = RANKING;
-          else if (selectedOption == 2) state = EXIT;
+          if (selectedOption == 0){
+            state = GAME;
+          } else if (selectedOption == 1){
+            state = RANKING;
+          } else if (selectedOption == 2){
+            state = EXIT;
+          }
         }
       } break;
 
@@ -130,21 +143,36 @@ int main(){
         camera.zoom = 1.0f;
         camera.rotation = 0.0f;
 
+        static Texture2D platformTexture = {0};
+        if (!platformTexture.id) platformTexture = LoadTexture("resources/texture/platform.png");
+
+        static Texture2D enemyTexture = {0};
+        if (!enemyTexture.id) enemyTexture = LoadTexture("resources/texture/enemy.png");
+
+        static Texture2D playerStandingTexture = {0};
+        if (!playerStandingTexture.id) playerStandingTexture = LoadTexture("resources/texture/player_standing.png");
+
+        static Texture2D playerRightTexture = {0};
+        if (!playerRightTexture.id) playerRightTexture = LoadTexture("resources/texture/player_right.png");
+
+        static Texture2D playerLeftTexture = {0};
+        if (!playerLeftTexture.id) playerLeftTexture = LoadTexture("resources/texture/player_left.png");
+
         float deltaTime = GetFrameTime();
 
+        Texture2D currentPlayerTexture = playerStandingTexture;
         if (IsKeyDown(KEY_D)){
           if (player.position.x < SCREEN_WIDTH / 2){
             player.position.x += PLAYER_SPEED * deltaTime;
           } else{
             camera.target.x = player.position.x + 25;
           }
+          currentPlayerTexture = playerRightTexture;
         }
-
         if (IsKeyDown(KEY_A)){
           player.position.x -= PLAYER_SPEED * deltaTime;
-          if (player.position.x < 0){
-            player.position.x = 0;
-          }
+          if (player.position.x < 0) player.position.x = 0;
+          currentPlayerTexture = playerLeftTexture;
         }
 
         UpdatePlayer(&player, deltaTime);
@@ -161,20 +189,67 @@ int main(){
         }
         camera.target.y = SCREEN_HEIGHT / 2;
 
+        if (player.position.x + SCREEN_WIDTH > lastGeneratedX){
+          obstacles = CreateObstacle(
+            (Vector2){lastGeneratedX + 200, 250},
+            (Vector2){150, 30},
+            obstacles
+          );
+          obstacles = CreateObstacle(
+            (Vector2){lastGeneratedX + 500, 150},
+            (Vector2){150, 30},
+            obstacles
+          );
+
+          enemies = CreateEnemy(
+            (Vector2){lastGeneratedX + 400, SCREEN_HEIGHT - ground.height - 50},
+            100,
+            enemies
+          );
+
+          lastGeneratedX += SCREEN_WIDTH;
+        }
+
+        if (player.position.x + SCREEN_WIDTH > lastGeneratedBackgroundX){
+          lastGeneratedBackgroundX += SCREEN_WIDTH;
+        }
+
+        Enemy *currentEnemy = enemies;
+        while (currentEnemy != NULL){
+          currentEnemy->position.x += currentEnemy->speed.x * currentEnemy->direction.x * deltaTime;
+
+          if (currentEnemy->position.x < currentEnemy->initialPosition.x - currentEnemy->maxDistance ||
+            currentEnemy->position.x > currentEnemy->initialPosition.x + currentEnemy->maxDistance){
+            currentEnemy->direction.x *= -1;
+          }
+
+          Rectangle playerRec = {player.position.x, player.position.y, 50, 50};
+          Rectangle enemyRec = {currentEnemy->position.x, currentEnemy->position.y, 50, 50};
+
+          if (CheckCollisionRecs(playerRec, enemyRec) && currentEnemy->isAlive){
+            DrawText("Game Over!", SCREEN_WIDTH / 2 - MeasureText("Game Over!", 30) / 2, SCREEN_HEIGHT / 2, 30, RED);
+            state = MENU;
+            break;
+          }
+
+          currentEnemy = currentEnemy->next;
+        }
+
         BeginMode2D(camera);
 
-        DrawTexture(background, 0, 0, WHITE);
-        DrawTexturePro(
-          ground,
-          (Rectangle){0, 0, ground.width, ground.height},
-          (Rectangle){0, SCREEN_HEIGHT - ground.height, SCREEN_WIDTH, ground.height},
-          (Vector2){0, 0},
-          0.0f,
-          WHITE
-        );
-
-        static Texture2D platformTexture ={0};
-        if (!platformTexture.id) platformTexture = LoadTexture("resources/texture/platform.png");
+        for (float x = 0; x <= lastGeneratedBackgroundX; x += background.width){
+          DrawTexture(background, x, 0, WHITE);
+        }
+        for (float x = 0; x <= lastGeneratedX; x += ground.width){
+          DrawTexturePro(
+            ground,
+            (Rectangle){0, 0, ground.width, ground.height},
+            (Rectangle){x, SCREEN_HEIGHT - ground.height, ground.width, ground.height},
+            (Vector2){0, 0},
+            0.0f,
+            WHITE
+          );
+        }
 
         Obstacle *currentObstacle = obstacles;
         while (currentObstacle != NULL){
@@ -182,9 +257,9 @@ int main(){
             platformTexture,
             (Rectangle){0, 0, platformTexture.width, platformTexture.height},
             (Rectangle){
-              currentObstacle->position.x, 
-              currentObstacle->position.y, 
-              currentObstacle->size.x, 
+              currentObstacle->position.x,
+              currentObstacle->position.y,
+              currentObstacle->size.x,
               currentObstacle->size.y
             },
             (Vector2){0, 0},
@@ -194,15 +269,42 @@ int main(){
           currentObstacle = currentObstacle->next;
         }
 
-        DrawRectangleV(player.position, (Vector2){50, 50}, RED);
+        currentEnemy = enemies;
+        while (currentEnemy != NULL){
+          if (currentEnemy->isAlive){
+            DrawTexturePro(
+              enemyTexture,
+              (Rectangle){0, 0, enemyTexture.width, enemyTexture.height},
+              (Rectangle){
+                currentEnemy->position.x,
+                currentEnemy->position.y,
+                50, 50
+              },
+              (Vector2){0, 0},
+              0.0f,
+              WHITE
+            );
+          }
+          currentEnemy = currentEnemy->next;
+        }
+
+        DrawTexturePro(
+          currentPlayerTexture,
+          (Rectangle){0, 0, currentPlayerTexture.width, currentPlayerTexture.height},
+          (Rectangle){
+            player.position.x,
+            player.position.y,
+            50, 50
+          },
+          (Vector2){0, 0},
+          0.0f,
+          WHITE
+        );
 
         EndMode2D();
 
-        CheckGroundCollision(&player, obstacles);
-
         if (IsKeyPressed(KEY_BACKSPACE)){
           state = MENU;
-          UnloadTexture(platformTexture);
         }
       } break;
 
@@ -210,7 +312,7 @@ int main(){
         int yOffset = 100;
         RankingEntry *current = ranking;
         DrawText("Ranking:", SCREEN_WIDTH / 2 - 100, 50, 30, DARKGRAY);
-        while (current != NULL){
+        while (current != NULL) {
           DrawText(
             TextFormat("%s - %d", current->nome, current->score),
             SCREEN_WIDTH / 2 - 150,
@@ -406,4 +508,20 @@ void ConstrainCameraToWorld(Camera2D *camera, float worldWidth, float worldHeigh
 
   if (camera->target.x > worldWidth - SCREEN_WIDTH / 2) camera->target.x = worldWidth - SCREEN_WIDTH / 2;
   if (camera->target.y > worldHeight - SCREEN_HEIGHT / 2) camera->target.y = worldHeight - SCREEN_HEIGHT / 2;
+}
+
+void ResetGame(Player *player, Obstacle **obstacles, Enemy **enemies, float *lastGeneratedX, float *lastGeneratedBackgroundX){
+  FreeObstacles(*obstacles);
+  FreeEnemies(*enemies);
+
+  *player = InitPlayer();
+
+  *obstacles = CreateObstacle((Vector2){200, 200}, (Vector2){150, 30}, NULL);
+  *obstacles = CreateObstacle((Vector2){400, 100}, (Vector2){150, 30}, *obstacles);
+  *obstacles = CreateObstacle((Vector2){700, 100}, (Vector2){150, 30}, *obstacles);
+
+  *enemies = CreateEnemy((Vector2){500, SCREEN_HEIGHT - 200}, 100, NULL);
+
+  *lastGeneratedX = SCREEN_WIDTH;
+  *lastGeneratedBackgroundX = SCREEN_WIDTH;
 }
