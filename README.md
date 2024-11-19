@@ -24,11 +24,10 @@ Use esses comandos para rodar o jogo:
 
 !! Importante falar que você DEVE ter as seguintes bibliotecas !!
 
-  #include <stdlib.h>
-  #include <stdbool.h>
+  #include <raylib.h>
   #include <stdio.h>
-  #include <unistd.h>
-  #include <time.h>
+  #include <stdlib.h>
+  #include <string.h>
 
 Para instalar o Raylib no linux você deve usar os comandos:
 
