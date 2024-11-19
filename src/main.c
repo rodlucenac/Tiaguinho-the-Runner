@@ -83,7 +83,25 @@ int main(){
   while (!nameEntered){
     BeginDrawing();
     ClearBackground(RAYWHITE);
-    DrawText("Enter your name: ", SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 - 20, 20, DARKGRAY);
+    DrawTexture(background, 0, 0, WHITE);
+      DrawTexturePro(
+      ground,
+      (Rectangle){0, 0, ground.width, ground.height},
+      (Rectangle){0, SCREEN_HEIGHT - ground.height, SCREEN_WIDTH, ground.height},
+      (Vector2){0, 0},
+      0.0f,
+      WHITE
+      );
+
+      const char *gameName = "TIAGUINHO THE RUNNER";
+      DrawText(
+        gameName,
+        SCREEN_WIDTH / 2 - MeasureText(gameName, 40) / 2,
+        50,
+        40,
+        DARKBLUE
+      );
+    DrawText("Enter your name: ", SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 - 20, 20, DARKBLUE);
     DrawText(playerName, SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 + 20, 20, DARKBLUE);
 
     int key = GetCharPressed();
