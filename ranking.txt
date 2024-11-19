@@ -1,2 +1,0 @@
-rod 16
-rodrigo 0

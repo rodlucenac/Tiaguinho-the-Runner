@@ -5,9 +5,11 @@
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-#define GRAVITY 15.0f
-#define JUMP_FORCE 50.0f
+#define GRAVITY 40.0f
+#define JUMP_FORCE 80.0f
 #define PLAYER_SPEED 120.0f
+#define MAX_SPEED 300.0f
+#define SPEED_INCREMENT 1.0f
 
 typedef enum{
   MENU,
@@ -55,13 +57,7 @@ void FreeObstacles(Obstacle *head);
 void FreeEnemies(Enemy *head);
 void FreeRanking(RankingEntry *head);
 void UpdatePlayer(Player *player, float deltaTime);
-void UpdateEnemy(Enemy *enemy, float deltaTime);
 void CheckGroundCollision(Player *player, Obstacle *obstacles);
-void DrawObstacles(Obstacle *head);
-void DrawEnemies(Enemy *head);
-void DrawHUD(Player *player);
-void UpdateCameraPlayerBounds(Camera2D *camera, Player *player);
-void ConstrainCameraToWorld(Camera2D *camera, float worldWidth, float worldHeight);
 void ResetGame(Player *player, Obstacle **obstacles, Enemy **enemies, float *lastGeneratedX, float *lastGeneratedBackgroundX);
 
 int main(){
@@ -190,17 +186,22 @@ int main(){
 
         float elapsedTime = GetTime() - startTime;
 
+        float currentSpeed = PLAYER_SPEED + (SPEED_INCREMENT * elapsedTime);
+        if (currentSpeed > MAX_SPEED){
+          currentSpeed = MAX_SPEED;
+        }
+
         Texture2D currentPlayerTexture = playerStandingTexture;
         if (IsKeyDown(KEY_D)){
-          if (player.position.x < SCREEN_WIDTH / 2){
-            player.position.x += PLAYER_SPEED * deltaTime;
-          } else{
+          if (player.position.x < SCREEN_WIDTH / 2) {
+            player.position.x += currentSpeed * deltaTime;
+          } else {
             camera.target.x = player.position.x + 25;
           }
           currentPlayerTexture = playerRightTexture;
         }
         if (IsKeyDown(KEY_A)){
-          player.position.x -= PLAYER_SPEED * deltaTime;
+          player.position.x -= currentSpeed * deltaTime;
           if (player.position.x < 0) player.position.x = 0;
           currentPlayerTexture = playerLeftTexture;
         }
@@ -465,7 +466,7 @@ void AddToRanking(RankingEntry **head, const char *nome, int score){
 }
 
 void SaveRanking(RankingEntry *head){
-  FILE *file = fopen("ranking.txt", "w");
+  FILE *file = fopen("ranking.txt", "a+");
   if (file == NULL){
     printf("Erro ao salvar o ranking!\n");
     return;
@@ -536,30 +537,6 @@ void CheckGroundCollision(Player *player, Obstacle *obstacles){
     }
     obstacles = obstacles->next;
   }
-}
-
-void UpdateEnemy(Enemy *enemy, float deltaTime){
-  while (enemy != NULL){
-    enemy->position.x += enemy->speed.x * enemy->direction.x * deltaTime;
-
-    if (enemy->position.x < enemy->initialPosition.x - enemy->maxDistance || 
-      enemy->position.x > enemy->initialPosition.x + enemy->maxDistance){
-      enemy->direction.x *= -1;
-    }
-    enemy = enemy->next;
-  }
-}
-
-void UpdateCameraPlayerBounds(Camera2D *camera, Player *player){
-  camera->target = player->position;
-}
-
-void ConstrainCameraToWorld(Camera2D *camera, float worldWidth, float worldHeight){
-  if (camera->target.x < SCREEN_WIDTH / 2) camera->target.x = SCREEN_WIDTH / 2;
-  if (camera->target.y < SCREEN_HEIGHT / 2) camera->target.y = SCREEN_HEIGHT / 2;
-
-  if (camera->target.x > worldWidth - SCREEN_WIDTH / 2) camera->target.x = worldWidth - SCREEN_WIDTH / 2;
-  if (camera->target.y > worldHeight - SCREEN_HEIGHT / 2) camera->target.y = worldHeight - SCREEN_HEIGHT / 2;
 }
 
 void ResetGame(Player *player, Obstacle **obstacles, Enemy **enemies, float *lastGeneratedX, float *lastGeneratedBackgroundX){
